@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";  // ← useEffect add kiya
 
 // ─────────────────────────────────────────────
 //  FAKE "DATABASE" stored in React state
@@ -19,28 +19,21 @@ const makeId = () => Date.now();
 //  MAIN APP  –  decides which "page" to show
 // ════════════════════════════════════════════════════════
 export default function App() {
-  // currentUser = null means "not logged in"
   const [currentUser, setCurrentUser] = useState(null);
-
-  // All registered users  { id, name, email, password }
   const [users, setUsers] = useState([
     { id: 1, name: "Demo User", email: "demo@email.com", password: "demo123" },
   ]);
-
-  // Which auth screen to show: "login" or "signup"
   const [authScreen, setAuthScreen] = useState("login");
 
-  // ── Sign-up handler ──────────────────────────────────
   const handleSignup = ({ name, email, password }) => {
     const already = users.find((u) => u.email === email);
     if (already) return "Email already registered!";
     const newUser = { id: makeId(), name, email, password };
     setUsers((prev) => [...prev, newUser]);
     setCurrentUser(newUser);
-    return null; // null = no error
+    return null;
   };
 
-  // ── Login handler ────────────────────────────────────
   const handleLogin = ({ email, password }) => {
     const user = users.find((u) => u.email === email && u.password === password);
     if (!user) return "Wrong email or password!";
@@ -48,10 +41,8 @@ export default function App() {
     return null;
   };
 
-  // ── Logout ───────────────────────────────────────────
   const handleLogout = () => setCurrentUser(null);
 
-  // ── Render ───────────────────────────────────────────
   if (!currentUser) {
     return authScreen === "login" ? (
       <LoginPage onLogin={handleLogin} onSwitch={() => setAuthScreen("signup")} />
@@ -81,7 +72,6 @@ function LoginPage({ onLogin, onSwitch }) {
   return (
     <div style={styles.pageCenter}>
       <div style={styles.authCard}>
-        {/* Logo / Title */}
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <div style={styles.logo}>✅</div>
           <h1 style={styles.appTitle}>TaskFlow</h1>
@@ -116,16 +106,13 @@ function LoginPage({ onLogin, onSwitch }) {
           </button>
         </div>
 
-        <button style={styles.primaryBtn} onClick={handleSubmit}>
-          Log In
-        </button>
+        <button style={styles.primaryBtn} onClick={handleSubmit}>Log In</button>
 
         <p style={styles.switchText}>
           Don't have an account?{" "}
           <span style={styles.link} onClick={onSwitch}>Sign up free</span>
         </p>
 
-        {/* Demo hint */}
         <div style={styles.hintBox}>
           <strong>🧪 Try the demo:</strong><br />
           Email: <code>demo@email.com</code><br />
@@ -192,9 +179,7 @@ function SignupPage({ onSignup, onSwitch }) {
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
         />
 
-        <button style={styles.primaryBtn} onClick={handleSubmit}>
-          Create Account
-        </button>
+        <button style={styles.primaryBtn} onClick={handleSubmit}>Create Account</button>
 
         <p style={styles.switchText}>
           Already have an account?{" "}
@@ -209,23 +194,31 @@ function SignupPage({ onSignup, onSwitch }) {
 //  TASKS PAGE  –  the main dashboard after login
 // ════════════════════════════════════════════════════════
 function TasksPage({ user, onLogout }) {
-  const [tasks, setTasks] = useState(SAMPLE_TASKS);
-  const [filter, setFilter] = useState("all");      // "all" | "incomplete" | "complete"
-  const [showForm, setShowForm] = useState(false);   // show/hide Add Task form
-  const [editingTask, setEditingTask] = useState(null); // task being edited (or null)
+
+  // ✅ FIX 1 — Browser se saved tasks lo, nahi to sample tasks use karo
+  const [tasks, setTasks] = useState(() => {
+    const saved = localStorage.getItem("taskflow-tasks");
+    return saved ? JSON.parse(saved) : SAMPLE_TASKS;
+  });
+
+  const [filter, setFilter] = useState("all");
+  const [showForm, setShowForm] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
   const [search, setSearch] = useState("");
 
-  // ── Stats ────────────────────────────────────────────
+  // ✅ FIX 2 — Jab bhi tasks badlein, browser mein save karo
+  useEffect(() => {
+    localStorage.setItem("taskflow-tasks", JSON.stringify(tasks));
+  }, [tasks]); // tasks badle tab hi run hoga
+
   const total = tasks.length;
   const done = tasks.filter((t) => t.status === "complete").length;
   const pending = total - done;
 
-  // ── Filtered + searched tasks ────────────────────────
   const visibleTasks = tasks
     .filter((t) => filter === "all" || t.status === filter)
     .filter((t) => t.title.toLowerCase().includes(search.toLowerCase()));
 
-  // ── Add a new task ───────────────────────────────────
   const handleAdd = (taskData) => {
     const newTask = {
       id: makeId(),
@@ -237,7 +230,6 @@ function TasksPage({ user, onLogout }) {
     setShowForm(false);
   };
 
-  // ── Update an existing task ──────────────────────────
   const handleUpdate = (taskData) => {
     setTasks((prev) =>
       prev.map((t) => (t.id === editingTask.id ? { ...t, ...taskData } : t))
@@ -245,14 +237,12 @@ function TasksPage({ user, onLogout }) {
     setEditingTask(null);
   };
 
-  // ── Delete a task ────────────────────────────────────
   const handleDelete = (id) => {
     if (window.confirm("Delete this task?")) {
       setTasks((prev) => prev.filter((t) => t.id !== id));
     }
   };
 
-  // ── Toggle complete / incomplete ─────────────────────
   const handleToggle = (id) => {
     setTasks((prev) =>
       prev.map((t) =>
@@ -265,7 +255,6 @@ function TasksPage({ user, onLogout }) {
 
   return (
     <div style={styles.appShell}>
-      {/* ── TOP NAV ── */}
       <header style={styles.navbar}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 22 }}>✅</span>
@@ -278,15 +267,12 @@ function TasksPage({ user, onLogout }) {
       </header>
 
       <main style={styles.main}>
-
-        {/* ── STATS CARDS ── */}
         <div style={styles.statsRow}>
           <StatCard label="Total Tasks" value={total} color="#6366f1" emoji="📋" />
           <StatCard label="Completed" value={done} color="#10b981" emoji="✅" />
           <StatCard label="Pending" value={pending} color="#f59e0b" emoji="⏳" />
         </div>
 
-        {/* ── SEARCH + ADD BUTTON ── */}
         <div style={styles.toolbar}>
           <input
             style={{ ...styles.input, flex: 1, margin: 0 }}
@@ -302,7 +288,6 @@ function TasksPage({ user, onLogout }) {
           </button>
         </div>
 
-        {/* ── FILTER TABS ── */}
         <div style={styles.filterRow}>
           {["all", "incomplete", "complete"].map((f) => (
             <button
@@ -318,7 +303,6 @@ function TasksPage({ user, onLogout }) {
           ))}
         </div>
 
-        {/* ── TASK FORM (Add or Edit) ── */}
         {(showForm || editingTask) && (
           <TaskForm
             initial={editingTask}
@@ -327,7 +311,6 @@ function TasksPage({ user, onLogout }) {
           />
         )}
 
-        {/* ── TASK LIST ── */}
         {visibleTasks.length === 0 ? (
           <div style={styles.emptyState}>
             <div style={{ fontSize: 48 }}>📭</div>
@@ -352,7 +335,7 @@ function TasksPage({ user, onLogout }) {
 }
 
 // ════════════════════════════════════════════════════════
-//  TASK FORM  –  used for both Add and Edit
+//  TASK FORM
 // ════════════════════════════════════════════════════════
 function TaskForm({ initial, onSubmit, onCancel }) {
   const [title, setTitle] = useState(initial?.title || "");
@@ -404,16 +387,14 @@ function TaskForm({ initial, onSubmit, onCancel }) {
         <button style={styles.primaryBtn} onClick={handleSubmit}>
           {initial ? "Save Changes" : "Add Task"}
         </button>
-        <button style={styles.cancelBtn} onClick={onCancel}>
-          Cancel
-        </button>
+        <button style={styles.cancelBtn} onClick={onCancel}>Cancel</button>
       </div>
     </div>
   );
 }
 
 // ════════════════════════════════════════════════════════
-//  TASK CARD  –  displays a single task
+//  TASK CARD
 // ════════════════════════════════════════════════════════
 function TaskCard({ task, onToggle, onEdit, onDelete }) {
   const isDone = task.status === "complete";
@@ -426,9 +407,7 @@ function TaskCard({ task, onToggle, onEdit, onDelete }) {
 
   return (
     <div style={{ ...styles.taskCard, opacity: isDone ? 0.75 : 1 }}>
-      {/* Checkbox + Title row */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-        {/* Custom checkbox */}
         <button
           style={{
             ...styles.checkbox,
@@ -441,7 +420,6 @@ function TaskCard({ task, onToggle, onEdit, onDelete }) {
           {isDone && <span style={{ color: "#fff", fontSize: 13 }}>✓</span>}
         </button>
 
-        {/* Title + Description */}
         <div style={{ flex: 1 }}>
           <p style={{
             margin: 0,
@@ -457,8 +435,6 @@ function TaskCard({ task, onToggle, onEdit, onDelete }) {
               {task.description}
             </p>
           )}
-
-          {/* Meta row */}
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
             <span style={{ ...styles.badge, background: priorityBadge.bg, color: priorityBadge.color }}>
               {priorityBadge.label}
@@ -470,7 +446,6 @@ function TaskCard({ task, onToggle, onEdit, onDelete }) {
           </div>
         </div>
 
-        {/* Action buttons */}
         <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
           <button style={styles.iconBtn} onClick={onEdit} title="Edit task">✏️</button>
           <button style={{ ...styles.iconBtn, background: "#fee2e2" }} onClick={onDelete} title="Delete task">🗑️</button>
@@ -481,7 +456,7 @@ function TaskCard({ task, onToggle, onEdit, onDelete }) {
 }
 
 // ════════════════════════════════════════════════════════
-//  STAT CARD  –  summary number at the top
+//  STAT CARD
 // ════════════════════════════════════════════════════════
 function StatCard({ label, value, color, emoji }) {
   return (
@@ -494,10 +469,9 @@ function StatCard({ label, value, color, emoji }) {
 }
 
 // ════════════════════════════════════════════════════════
-//  STYLES  –  all CSS-in-JS in one place (easy to change)
+//  STYLES
 // ════════════════════════════════════════════════════════
 const styles = {
-  // ── Auth screens ──
   pageCenter: {
     minHeight: "100vh",
     background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
@@ -519,8 +493,6 @@ const styles = {
   appTitle: { margin: "8px 0 4px", fontSize: 26, fontWeight: 800, color: "#1e293b", textAlign: "center" },
   subtitle: { margin: 0, color: "#64748b", fontSize: 14, textAlign: "center" },
   authHeading: { fontSize: 20, fontWeight: 700, color: "#1e293b", margin: "0 0 20px" },
-
-  // ── Shared form elements ──
   label: { display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 5 },
   input: {
     display: "block",
@@ -588,8 +560,6 @@ const styles = {
     position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
     background: "none", border: "none", cursor: "pointer", fontSize: 16, padding: 0,
   },
-
-  // ── App shell ──
   appShell: { minHeight: "100vh", background: "#f1f5f9", fontFamily: "'Segoe UI', sans-serif" },
   navbar: {
     background: "linear-gradient(90deg,#6366f1,#8b5cf6)",
@@ -611,8 +581,6 @@ const styles = {
     fontFamily: "inherit",
   },
   main: { maxWidth: 720, margin: "0 auto", padding: "28px 16px 60px" },
-
-  // ── Stats ──
   statsRow: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 22 },
   statCard: {
     background: "#fff",
@@ -622,8 +590,6 @@ const styles = {
     boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
     display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
   },
-
-  // ── Toolbar ──
   toolbar: { display: "flex", gap: 10, marginBottom: 14, alignItems: "center" },
   addBtn: {
     padding: "10px 20px",
@@ -637,8 +603,6 @@ const styles = {
     whiteSpace: "nowrap",
     fontFamily: "inherit",
   },
-
-  // ── Filter tabs ──
   filterRow: { display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" },
   filterTab: {
     padding: "8px 16px",
@@ -665,8 +629,6 @@ const styles = {
     padding: "1px 8px",
     fontSize: 12,
   },
-
-  // ── Form card ──
   formCard: {
     background: "#fff",
     borderRadius: 14,
@@ -675,8 +637,6 @@ const styles = {
     boxShadow: "0 4px 20px rgba(99,102,241,0.12)",
     border: "2px solid #e0e7ff",
   },
-
-  // ── Task list ──
   taskList: { display: "flex", flexDirection: "column", gap: 12 },
   taskCard: {
     background: "#fff",
@@ -685,8 +645,6 @@ const styles = {
     boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
     transition: "box-shadow 0.2s",
   },
-
-  // ── Task card internals ──
   checkbox: {
     width: 24, height: 24,
     border: "2px solid",
@@ -699,12 +657,7 @@ const styles = {
     padding: 0,
     fontFamily: "inherit",
   },
-  badge: {
-    padding: "3px 10px",
-    borderRadius: 20,
-    fontSize: 12,
-    fontWeight: 600,
-  },
+  badge: { padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 600 },
   iconBtn: {
     background: "#f1f5f9",
     border: "none",
@@ -713,8 +666,6 @@ const styles = {
     cursor: "pointer",
     fontSize: 15,
   },
-
-  // ── Empty state ──
   emptyState: {
     textAlign: "center",
     padding: "60px 20px",
